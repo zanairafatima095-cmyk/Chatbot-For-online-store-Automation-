@@ -1,0 +1,284 @@
+{
+  "name": "Workflow 5 - Daily Support Analytics Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 23
+            }
+          ]
+        }
+      },
+      "id": "d0311092-f53c-4d46-b5c4-ac1b2d816663",
+      "name": "Every Night at 11 PM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -288,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "11X3bwYPWu5_CDXJ-bEta0hxf2arW6AkOlxJAZEq_Wks",
+          "mode": "list",
+          "cachedResultName": "Customers data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11X3bwYPWu5_CDXJ-bEta0hxf2arW6AkOlxJAZEq_Wks/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 882537848,
+          "mode": "list",
+          "cachedResultName": "Chat_logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11X3bwYPWu5_CDXJ-bEta0hxf2arW6AkOlxJAZEq_Wks/edit#gid=882537848"
+        },
+        "options": {}
+      },
+      "id": "bc9f67f2-db7d-4b4d-bf5e-9119a6f836b6",
+      "name": "Read ChatLogs Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -80,
+        80
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "eUaPVtCtWTLzDAFk",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "11X3bwYPWu5_CDXJ-bEta0hxf2arW6AkOlxJAZEq_Wks",
+          "mode": "list",
+          "cachedResultName": "Customers data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11X3bwYPWu5_CDXJ-bEta0hxf2arW6AkOlxJAZEq_Wks/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1211284400,
+          "mode": "list",
+          "cachedResultName": "Tickets",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11X3bwYPWu5_CDXJ-bEta0hxf2arW6AkOlxJAZEq_Wks/edit#gid=1211284400"
+        },
+        "options": {}
+      },
+      "id": "097c258a-e19d-4e14-ab52-f969bbdd6efb",
+      "name": "Read Tickets Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        80,
+        80
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "eUaPVtCtWTLzDAFk",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const chatLogs = $('Read ChatLogs Sheet').all();\nconst tickets = $('Read Tickets Sheet').all();\n\nconst todayStr = new Date().toISOString().slice(0,10);\n\nfunction isToday(dateVal) {\n  if (!dateVal) return false;\n  const d = new Date(dateVal);\n  if (isNaN(d)) return false;\n  return d.toISOString().slice(0,10) === todayStr;\n}\n\nconst validLogs = chatLogs.filter(item => item.json['Timestamp']);\nconst validTickets = tickets.filter(item => item.json['Ticket ID']);\n\nconst todayLogs = validLogs.filter(item => isToday(item.json['Timestamp']));\nconst todayTickets = validTickets.filter(item => isToday(item.json['Created Date']));\n\nconst totalMessages = todayLogs.length;\n\nconst intentCounts = {};\ntodayLogs.forEach(item => {\n  const intent = item.json['Intent'] || 'Unknown';\n  intentCounts[intent] = (intentCounts[intent] || 0) + 1;\n});\n\nlet mostCommonIntent = 'N/A';\nlet maxCount = 0;\nfor (const [intent, count] of Object.entries(intentCounts)) {\n  if (count > maxCount) { maxCount = count; mostCommonIntent = intent; }\n}\n\nconst ticketsCreatedToday = todayTickets.length;\nconst openTickets = validTickets.filter(item => (item.json['Status'] || '').toLowerCase() === 'open').length;\nconst resolvedTickets = validTickets.filter(item => (item.json['Status'] || '').toLowerCase() === 'resolved').length;\nconst highPriorityToday = todayTickets.filter(item => item.json['Priority'] === 'High').length;\n\nconst intentSummaryLines = Object.entries(intentCounts)\n  .sort((a,b) => b[1]-a[1])\n  .map(([intent,count]) => `- ${intent}: ${count}`)\n  .join('\\n') || 'No messages today';\n\nreturn [{\n  json: {\n    todayStr,\n    totalMessages,\n    mostCommonIntent,\n    ticketsCreatedToday,\n    openTickets,\n    resolvedTickets,\n    highPriorityToday,\n    intentSummaryLines\n  }\n}];"
+      },
+      "id": "48bdecae-8e80-4f8b-9584-fa775126424c",
+      "name": "Compute Daily Stats",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Today's Nova Store support stats:\nTotal Messages: {{ $json.totalMessages }}\nMost Common Issue: {{ $json.mostCommonIntent }}\nTickets Created Today: {{ $json.ticketsCreatedToday }}\nOpen Tickets (all time): {{ $json.openTickets }}\nResolved Tickets (all time): {{ $json.resolvedTickets }}\nHigh Priority Tickets Today: {{ $json.highPriorityToday }}\n\nBreakdown by issue type:\n{{ $json.intentSummaryLines }}",
+        "options": {
+          "systemMessage": "You are a business analyst for Nova Store, an online retail store. Given today's customer support stats, write a short, friendly 2-3 sentence insight for the store owner. Highlight the most important thing they should know or act on today (e.g. a spike in a specific issue, high-priority tickets needing attention, or if everything looks fine, a brief positive note). Do not repeat the raw numbers back verbatim, add an actual insight. Plain text only, no JSON, no markdown."
+        }
+      },
+      "id": "ea049c28-d1de-43a2-89f0-51d115d0655b",
+      "name": "AI Agent - Generate Insight",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        464,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "reportText",
+              "value": "=📊 Nova Store — Daily Support Report ({{ $('Compute Daily Stats').item.json.todayStr }})\n\nTotal Messages: {{ $('Compute Daily Stats').item.json.totalMessages }}\nMost Common Issue: {{ $('Compute Daily Stats').item.json.mostCommonIntent }}\n\nTickets Created Today: {{ $('Compute Daily Stats').item.json.ticketsCreatedToday }}\nHigh Priority Today: {{ $('Compute Daily Stats').item.json.highPriorityToday }}\nOpen Tickets (total): {{ $('Compute Daily Stats').item.json.openTickets }}\nResolved Tickets (total): {{ $('Compute Daily Stats').item.json.resolvedTickets }}\n\nBreakdown:\n{{ $('Compute Daily Stats').item.json.intentSummaryLines }}\n\n💡 Insight:\n{{ $json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3c5aafe8-e47e-4190-bed7-3da4c8938c6f",
+      "name": "Format Daily Report",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        768,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "-5321853306",
+        "text": "={{ $json.reportText }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "895d1da3-508a-4cb9-b334-6b43d37fdca0",
+      "name": "Send Report to Admin",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1024,
+        80
+      ],
+      "webhookId": "b1e4bff2-2f6b-40a7-b469-c417027de534",
+      "credentials": {
+        "telegramApi": {
+          "id": "ylcHC8lv9w687xN9",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        336,
+        288
+      ],
+      "id": "7e2ac4ab-4cb0-4ab8-afcf-283e317de17d",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "b0mQVfat4WdNc2eL",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every Night at 11 PM": {
+      "main": [
+        [
+          {
+            "node": "Read ChatLogs Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read ChatLogs Sheet": {
+      "main": [
+        [
+          {
+            "node": "Read Tickets Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Tickets Sheet": {
+      "main": [
+        [
+          {
+            "node": "Compute Daily Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Daily Stats": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Generate Insight",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Generate Insight": {
+      "main": [
+        [
+          {
+            "node": "Format Daily Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Daily Report": {
+      "main": [
+        [
+          {
+            "node": "Send Report to Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Generate Insight",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "af3ae2ef-1820-4924-a7b5-16a73c9304ca",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "80ca71d469169200935c7492abd7c0ed6017333f03d230f7db2817d96fb48a90"
+  },
+  "nodeGroups": [],
+  "id": "qhGOH14I3LMW8ucw",
+  "tags": []
+}

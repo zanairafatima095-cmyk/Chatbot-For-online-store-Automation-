@@ -1,0 +1,439 @@
+{
+  "name": "Workflow 2 - Order Lookup System",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "chatId"
+            },
+            {
+              "name": "customerName"
+            },
+            {
+              "name": "messageText"
+            }
+          ]
+        }
+      },
+      "id": "79ead6e7-1b8c-4636-a96c-a2549400c843",
+      "name": "When Called from Workflow 1",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1248,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"orderId\": {\n      \"type\": \"string\",\n      \"description\": \"The order ID mentioned by the customer, e.g. ORD001. Empty string if none mentioned.\"\n    }\n  },\n  \"required\": [\"orderId\"]\n}"
+      },
+      "id": "8a7d125d-aa9f-4aac-8a12-bbb1cb885021",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -848,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.messageText }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Extract the Order ID mentioned in the customer's message, if any. Order IDs look like 'ORD001', 'ORD012', etc (the letters ORD followed by digits) - they may be written with different spacing or capitalization. If no order ID is present anywhere in the message, return an empty string for orderId. Respond ONLY in the required JSON format."
+        }
+      },
+      "id": "53ae398e-64a0-4101-9bfa-061f2e518dfa",
+      "name": "AI Agent - Extract Order ID",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1008,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.output.orderId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e6117bcd-1165-439d-9f7d-0e667dc10a59",
+      "name": "IF - Has Order ID?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -688,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "11X3bwYPWu5_CDXJ-bEta0hxf2arW6AkOlxJAZEq_Wks"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1644706928,
+          "mode": "list",
+          "cachedResultName": "Orders",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11X3bwYPWu5_CDXJ-bEta0hxf2arW6AkOlxJAZEq_Wks/edit#gid=1644706928"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Order ID",
+              "lookupValue": "={{ $('AI Agent - Extract Order ID').item.json.output.orderId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "495fede2-c04e-44a8-b09b-7512b046a51b",
+      "name": "Read Orders Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -496,
+        64
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "eUaPVtCtWTLzDAFk",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json['Order ID'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "aeb6a60e-a83f-4809-9691-dbaa72e6c9f6",
+      "name": "IF - Order Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -256,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "chatId",
+              "value": "={{ $('When Called from Workflow 1').item.json.chatId }}",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "replyText",
+              "value": "=Order {{ $json['Order ID'] }} update:\n\nProduct: {{ $json['Product'] }}\nStatus: {{ $json['Status'] }}\nTracking ID: {{ $json['Tracking ID'] }}\n\nLet me know if you need anything else! 😊",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "205eeac6-6073-4c90-baa9-47703db8dde4",
+      "name": "Format Found Reply",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        32,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n1",
+              "name": "chatId",
+              "value": "={{ $('When Called from Workflow 1').item.json.chatId }}",
+              "type": "string"
+            },
+            {
+              "id": "n2",
+              "name": "replyText",
+              "value": "=Sorry, I couldn't find any order with ID {{ $('AI Agent - Extract Order ID').item.json.output.orderId }}. Please double-check the Order ID and try again, or type 'talk to human' to reach our support team.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ed1d5c10-ab6e-48d6-82ff-a2ee90e1a095",
+      "name": "Format Not Found Reply",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        80,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "k1",
+              "name": "chatId",
+              "value": "={{ $('When Called from Workflow 1').item.json.chatId }}",
+              "type": "string"
+            },
+            {
+              "id": "k2",
+              "name": "replyText",
+              "value": "Sure! Could you please share your Order ID (e.g. ORD001) so I can check the status for you? 😊",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f9f3695c-f4ce-4d52-9803-1eb9e565f084",
+      "name": "Ask For Order ID",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -384,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.replyText }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "d77535e3-4caa-401b-98f6-e3bcfbe4f4ce",
+      "name": "Send Telegram Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        256,
+        160
+      ],
+      "webhookId": "bbd8cd0b-bc90-4ab6-b6ab-a56e6e6f9bb9",
+      "credentials": {
+        "telegramApi": {
+          "id": "ylcHC8lv9w687xN9",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -1152,
+        368
+      ],
+      "id": "00027197-5242-41c1-bef7-e23794bb2882",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "b0mQVfat4WdNc2eL",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Called from Workflow 1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Extract Order ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent - Extract Order ID",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Extract Order ID": {
+      "main": [
+        [
+          {
+            "node": "IF - Has Order ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Has Order ID?": {
+      "main": [
+        [
+          {
+            "node": "Read Orders Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask For Order ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Orders Sheet": {
+      "main": [
+        [
+          {
+            "node": "IF - Order Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Order Found?": {
+      "main": [
+        [
+          {
+            "node": "Format Found Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Not Found Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Found Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Not Found Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask For Order ID": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Extract Order ID",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1597aed2-efc2-420d-a4a6-24da22c199ac",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "80ca71d469169200935c7492abd7c0ed6017333f03d230f7db2817d96fb48a90"
+  },
+  "nodeGroups": [],
+  "id": "T25M8OVShsfR1XWO",
+  "tags": []
+}

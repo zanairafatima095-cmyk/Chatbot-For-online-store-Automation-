@@ -1,0 +1,120 @@
+{
+  "name": "Workflow 4 - Admin Notification System",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "customerName"
+            },
+            {
+              "name": "issueType"
+            },
+            {
+              "name": "details"
+            },
+            {
+              "name": "priority"
+            }
+          ]
+        }
+      },
+      "id": "67e1c902-4033-4d65-8bf3-d5f7eb31acb5",
+      "name": "When Called from Other Workflows",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "=alertText",
+              "value": "=🚨 {{ $json.priority || 'New' }} Priority Alert\n\nCustomer:\n{{ $json.customerName }}\n\nIssue:\n{{ $json.issueType }}\n\nDetails:\n{{ $json.details }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "eb593254-e10e-42f6-bd6d-b7ceb147da67",
+      "name": "Format Admin Alert",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        256,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "-5321853306",
+        "text": "={{ $json.alertText }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "93e8a27e-9145-45c3-b170-12e931b623ba",
+      "name": "Send Alert to Admin",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        512,
+        0
+      ],
+      "webhookId": "98510a9f-0268-4430-8360-66e92d24854d",
+      "credentials": {
+        "telegramApi": {
+          "id": "ylcHC8lv9w687xN9",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Called from Other Workflows": {
+      "main": [
+        [
+          {
+            "node": "Format Admin Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Admin Alert": {
+      "main": [
+        [
+          {
+            "node": "Send Alert to Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "69bbb707-9e60-4b0b-b3b1-c0003e4cca97",
+  "meta": {
+    "instanceId": "80ca71d469169200935c7492abd7c0ed6017333f03d230f7db2817d96fb48a90"
+  },
+  "nodeGroups": [],
+  "id": "Z9XbYIcfUV40CoVC",
+  "tags": []
+}

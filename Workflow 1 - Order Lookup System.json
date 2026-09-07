@@ -1,0 +1,812 @@
+{
+  "name": "Workflow 1 - Order Lookup System",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "5a77ff04-702a-4bdf-8f76-f5b6ab739de7",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        48,
+        16
+      ],
+      "webhookId": "a5df44ea-0207-4c48-bc41-7f0fbee677aa",
+      "credentials": {
+        "telegramApi": {
+          "id": "ylcHC8lv9w687xN9",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "chatId",
+              "value": "={{ $json.message.chat.id }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "messageText",
+              "value": "={{ $json.message.text }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "customerName",
+              "value": "={{ $json.message.from.first_name }} {{ $json.message.from.last_name || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "246b9a5a-6467-4def-94d9-3ed2d52b589c",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        304,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"intent\": {\n      \"type\": \"string\",\n      \"enum\": [\"Greeting\", \"Product Information\", \"Business Hours\", \"Order Status\", \"Delivery Delay\", \"Refund Request\", \"Complaint\", \"Payment Issue\", \"Cancel Order\", \"Talk to Human\"]\n    },\n    \"response\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\"intent\", \"response\"]\n}"
+      },
+      "id": "5372e7b8-84b9-40a6-98fc-4e4d113c9135",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        704,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.messageText }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are Nova, the AI customer support assistant for Nova Store, an online retail store. Business hours are Monday-Saturday, 10 AM - 8 PM (closed Sundays).\n\nClassify every customer message into exactly ONE of these intents: Greeting, Product Information, Business Hours, Order Status, Delivery Delay, Refund Request, Complaint, Payment Issue, Cancel Order, Talk to Human.\n\nThen write a short, warm, professional response (2-3 sentences max) to the customer, in the same language/style they used (English or Roman Urdu/Hinglish).\n\nRules for responses:\n- Order Status, Cancel Order, Delivery Delay: if they haven't given their Order ID or registered email, politely ask for it.\n- Refund Request, Complaint: acknowledge empathetically, tell them it has been logged and will be handled shortly.\n- Payment Issue: acknowledge and reassure them the team will verify and follow up.\n- Talk to Human: reassure them a team member will reach out shortly.\n- Greeting, Product Information, Business Hours: answer directly and helpfully.\n\nRespond ONLY in the required JSON format with 'intent' and 'response' fields."
+        }
+      },
+      "id": "bfe56434-1dd1-4460-94b9-09d59d8a815e",
+      "name": "AI Agent - Classify Intent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        512,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "l1",
+              "name": "Timestamp",
+              "value": "={{ $now }}",
+              "type": "string"
+            },
+            {
+              "id": "l2",
+              "name": "Chat ID",
+              "value": "={{ $('Prepare Input').item.json.chatId }}",
+              "type": "string"
+            },
+            {
+              "id": "l3",
+              "name": "Customer Name",
+              "value": "={{ $('Prepare Input').item.json.customerName }}",
+              "type": "string"
+            },
+            {
+              "id": "l4",
+              "name": "Message",
+              "value": "={{ $('Prepare Input').item.json.messageText }}",
+              "type": "string"
+            },
+            {
+              "id": "l5",
+              "name": "Intent",
+              "value": "={{ $json.output.intent }}",
+              "type": "string"
+            },
+            {
+              "id": "l6",
+              "name": "AI Response",
+              "value": "={{ $json.output.response }}",
+              "type": "string"
+            },
+            {
+              "id": "l7",
+              "name": "chatId",
+              "value": "={{ $('Prepare Input').item.json.chatId }}",
+              "type": "string"
+            },
+            {
+              "id": "l8",
+              "name": "response",
+              "value": "={{ $json.output.response }}",
+              "type": "string"
+            },
+            {
+              "id": "l9",
+              "name": "intent",
+              "value": "={{ $json.output.intent }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f584f0a6-57b7-4c87-a392-7eb384570084",
+      "name": "Prepare Log Entry",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        800,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "11X3bwYPWu5_CDXJ-bEta0hxf2arW6AkOlxJAZEq_Wks",
+          "mode": "list",
+          "cachedResultName": "Customers data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11X3bwYPWu5_CDXJ-bEta0hxf2arW6AkOlxJAZEq_Wks/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Chat_logs",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Chat ID",
+              "displayName": "Chat ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Intent",
+              "displayName": "Intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "AI Response",
+              "displayName": "AI Response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "chatId",
+              "displayName": "chatId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "response",
+              "displayName": "response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "intent",
+              "displayName": "intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "d97bf17f-faac-4213-9da8-0a99b4b25e48",
+      "name": "Log to ChatLogs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1008,
+        16
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "eUaPVtCtWTLzDAFk",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Prepare Log Entry').item.json.intent }}",
+                    "rightValue": "Order Status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "49ac8a32-4698-482c-9569-442fee7f5d0b"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Prepare Log Entry').item.json.intent }}",
+                    "rightValue": "Delivery Delay",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b0239477-7302-4bf5-b9cf-92603c2c4e0f"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Prepare Log Entry').item.json.intent }}",
+                    "rightValue": "Refund Request",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "627e8597-d186-48cb-b03c-dcde0d449fdf"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Prepare Log Entry').item.json.intent }}",
+                    "rightValue": "Complaint",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "5c7f4073-f371-4df4-9005-1b384302cd6f"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Prepare Log Entry').item.json.intent }}",
+                    "rightValue": "Payment Issue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "89b384a4-71ce-4c55-acad-3ae50fd58980"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Prepare Log Entry').item.json.intent }}",
+                    "rightValue": "Cancel Order",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "7c2c894a-47b5-4525-bae8-f01a524b68d5"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Prepare Log Entry').item.json.intent }}",
+                    "rightValue": "Talk to Human",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ad97f804-0a9e-4d45-a971-22d34c2c477e"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "General"
+        }
+      },
+      "id": "f3de23bb-3416-48fb-9c1c-2eb1245bb711",
+      "name": "Switch - Route by Intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1200,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Prepare Log Entry').item.json.chatId }}",
+        "text": "={{ $('Prepare Log Entry').item.json.response }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "b605d997-caa7-4f80-aeb8-4523a8232f58",
+      "name": "Send Telegram Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1600,
+        -32
+      ],
+      "webhookId": "30151938-63fe-4546-9a65-e6fc8da369dc",
+      "credentials": {
+        "telegramApi": {
+          "id": "ylcHC8lv9w687xN9",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "T25M8OVShsfR1XWO",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/T25M8OVShsfR1XWO",
+          "cachedResultName": "Workflow 2 - Order Lookup System"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatId": "={{ $('Prepare Log Entry').item.json.chatId }}",
+            "customerName": "={{ $('Prepare Log Entry').item.json['Customer Name'] }}",
+            "messageText": "={{ $('Prepare Log Entry').item.json.Message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "chatId",
+              "displayName": "chatId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "customerName",
+              "displayName": "customerName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "messageText",
+              "displayName": "messageText",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1456,
+        -208
+      ],
+      "id": "dc34b98d-2434-4cc8-a73c-25ae6844c02a",
+      "name": "Call 'Workflow 2 - Order Lookup System'"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "RqybQzohUXNeij5U",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/RqybQzohUXNeij5U",
+          "cachedResultName": "Workflow 3 - Complaint and Ticket Management"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatId": "={{ $('Prepare Log Entry').item.json.chatId }}",
+            "customerName": "={{ $('Prepare Log Entry').item.json['Customer Name'] }}",
+            "messageText": "={{ $('Prepare Log Entry').item.json.Message }}",
+            "intent": "={{ $('Prepare Log Entry').item.json.intent }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "chatId",
+              "displayName": "chatId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "customerName",
+              "displayName": "customerName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "messageText",
+              "displayName": "messageText",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "intent",
+              "displayName": "intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1600,
+        128
+      ],
+      "id": "bfeabc6e-f264-47f0-9e67-e42645b1d20e",
+      "name": "Call 'Workflow 3 - Complaint and Ticket Management'"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        368,
+        224
+      ],
+      "id": "a77adcde-613e-4de1-b480-37443a1ad2d9",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "b0mQVfat4WdNc2eL",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Classify Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent - Classify Intent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Classify Intent": {
+      "main": [
+        [
+          {
+            "node": "Prepare Log Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Log Entry": {
+      "main": [
+        [
+          {
+            "node": "Log to ChatLogs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to ChatLogs": {
+      "main": [
+        [
+          {
+            "node": "Switch - Route by Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch - Route by Intent": {
+      "main": [
+        [
+          {
+            "node": "Call 'Workflow 2 - Order Lookup System'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Workflow 3 - Complaint and Ticket Management'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Workflow 3 - Complaint and Ticket Management'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Workflow 3 - Complaint and Ticket Management'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Workflow 3 - Complaint and Ticket Management'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Workflow 3 - Complaint and Ticket Management'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Workflow 3 - Complaint and Ticket Management'": {
+      "main": [
+        []
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Classify Intent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "03c06d44-2b97-4944-b4cf-2cb681157e84",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "80ca71d469169200935c7492abd7c0ed6017333f03d230f7db2817d96fb48a90"
+  },
+  "nodeGroups": [],
+  "id": "47bIzRax4ZRU3de7",
+  "tags": []
+}
